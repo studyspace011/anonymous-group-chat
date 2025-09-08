@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Anonymous Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #6C63FF;
+      --secondary: #4A44C6;
+      --success: #4CAF50;
+      --danger: #F44336;
+      --warning: #FF9800;
+      --light: #F8F9FA;
+      --dark: #343A40;
+      --gray: #6C757D;
+      --border: #E9ECEF;
+      --bg: #f0f2f5;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: var(--bg);
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 0 30px rgba(0,0,0,0.1);
+    }
+    
+    /* Header */
+    .chat-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+    }
+    
+    .chat-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .chat-title-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+    }
+    
+    .chat-title-text h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
+    .chat-title-text p {
+      font-size: 0.85rem;
+      color: var(--gray);
+      margin-top: 2px;
+    }
+    
+    .header-stats {
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: var(--gray);
+    }
+    
+    /* Messages Area */
+    .chat-messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      background: #f8f9ff;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    .message {
+      display: flex;
+      gap: 12px;
+      max-width: 80%;
+      animation: messageAppear 0.3s ease;
+    }
+    
+    @keyframes messageAppear {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .message-avatar {
+      width: 35px;
+      height: 35px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+    
+    .message-content {
+      flex: 1;
+    }
+    
+    .message-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 5px;
+    }
+    
+    .message-user {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--dark);
+    }
+    
+    .admin-badge {
+      background: var(--danger);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    
+    .message-time {
+      font-size: 0.75rem;
+      color: var(--gray);
+    }
+    
+    .message-text {
+      background: white;
+      padding: 12px 16px;
+      border-radius: 18px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      font-size: 0.95rem;
+      line-height: 1.4;
+      color: var(--dark);
+    }
+    
+    .message.own {
+      align-self: flex-end;
+    }
+    
+    .message.own .message-text {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .message.pinned {
+      border-left: 4px solid var(--warning);
+      background: rgba(255, 152, 0, 0.1);
+      padding: 15px;
+      border-radius: 10px;
+    }
+    
+    .message-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .message:hover .message-actions {
+      opacity: 1;
+    }
+    
+    .message-actions button {
+      background: none;
+      border: none;
+      color: var(--gray);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 6px;
+      border-radius: 5px;
+      transition: all 0.2s;
+    }
+    
+    .message-actions button:hover {
+      background: var(--light);
+      color: var(--primary);
+    }
+    
+    /* Input Area */
+    .chat-input {
+      padding: 20px;
+      border-top: 1px solid var(--border);
+      background: white;
+    }
+    
+    .input-container {
+      display: flex;
+      gap: 12px;
+    }
+    
+    .input-container input {
+      flex: 1;
+      padding: 15px 20px;
+      border: 1px solid var(--border);
+      border-radius: 25px;
+      outline: none;
+      font-family: 'Poppins', sans-serif;
+      font-size: 1rem;
+    }
+    
+    .input-container input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.1);
+    }
+    
+    .send-button {
+      background: var(--primary);
+      color: white;
+      border: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .send-button:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+    }
+    
+    /* Notification */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--success);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      z-index: 1001;
+      font-size: 0.9rem;
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    .notification.error {
+      background: var(--danger);
+    }
+    
+    /* Welcome message */
+    .welcome-message {
+      text-align: center;
+      padding: 30px;
+      color: var(--gray);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="chat-title">
+        <div class="chat-title-icon">
+          <i class="fas fa-comments"></i>
+        </div>
+        <div class="chat-title-text">
+          <h2>Anonymous Group Chat</h2>
+          <p>Talk Freely, Stay Hidden.</p>
+        </div>
+      </div>
+      <div class="header-stats">
+        <div class="stat-item">
+          <i class="fas fa-users"></i>
+          <span id="activeCount">0</span> online
+        </div>
+        <div class="stat-item">
+          <i class="fas fa-comment"></i>
+          <span id="messageCount">0</span> messages
+        </div>
+      </div>
+    </div>
+    
+    <!-- Messages Area -->
+    <div class="chat-messages" id="chatMessages">
+      <div class="welcome-message">
+        <i class="fas fa-hand-wave" style="font-size: 2rem; margin-bottom: 15px;"></i>
+        <p>Welcome to Anonymous Chat! Your username is <strong id="userDisplay"></strong></p>
+        <p>Start chatting with others in real-time</p>
+      </div>
+    </div>
+    
+    <!-- Input Area -->
+    <div class="chat-input">
+      <div class="input-container">
+        <input type="text" id="messageInput" placeholder="Type your message...">
+        <button class="send-button" onclick="sendMessage()">
+          <i class="fas fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Notification -->
+  <div class="notification" id="notification">
+    Action completed successfully!
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://anon-chat-ebfc3-default-rtdb.firebaseio.com/",
+      projectId: "anon-chat-ebfc3",
+      storageBucket: "anon-chat-ebfc3.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    // Generate random anonymous username
+    const adjectives = ['student'];
+    const nouns = ['#'];
+    const numbers = Math.floor(Math.random() * 999);
+    const username = adjectives[Math.floor(Math.random() * adjectives.length)] + 
+                     nouns[Math.floor(Math.random() * nouns.length)] + 
+                     numbers;
+
+    // Display username
+    document.getElementById('userDisplay').textContent = username;
+
+    // Admin check
+    const ADMIN_SECRET = "aavid123";
+    let isAdmin = false;
+    const adminKey = prompt("Enter key (optional):");
+    if (adminKey === ADMIN_SECRET) {
+      isAdmin = true;
+      showNotification('Admin mode activated!', 'success');
+    }
+
+    // DOM Elements
+    const chatMessages = document.getElementById('chatMessages');
+    const messageInput = document.getElementById('messageInput');
+    const activeCount = document.getElementById('activeCount');
+    const messageCount = document.getElementById('messageCount');
+
+    // Format time
+    function formatTime(timestamp) {
+      const date = new Date(timestamp);
+      return date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    // Show notification
+    function showNotification(message, type = 'success') {
+      const notification = document.getElementById('notification');
+      notification.textContent = message;
+      notification.className = 'notification ' + (type === 'error' ? 'error' : '');
+      notification.classList.add('show');
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Render message
+    function renderMessage(id, messageData, isNew = false) {
+      const isOwn = messageData.user === username || (isAdmin && messageData.user === "ADMIN");
+      const existingMessage = document.querySelector(`[data-message-id="${id}"]`);
+      
+      if (existingMessage && !isNew) {
+        // Update existing message
+        const textElement = existingMessage.querySelector('.message-text');
+        textElement.textContent = messageData.message;
+        
+        if (messageData.pinned) {
+          existingMessage.classList.add('pinned');
+        } else {
+          existingMessage.classList.remove('pinned');
+        }
+        return;
+      }
+
+      // Remove welcome message on first real message
+      const welcomeMessage = document.querySelector('.welcome-message');
+      if (welcomeMessage) {
+        welcomeMessage.remove();
+      }
+
+      // Create new message
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `message ${isOwn ? 'own' : ''} ${messageData.pinned ? 'pinned' : ''}`;
+      messageDiv.setAttribute('data-message-id', id);
+      
+      messageDiv.innerHTML = `
+        <div class="message-avatar">${messageData.user.charAt(0)}</div>
+        <div class="message-content">
+          <div class="message-header">
+            <span class="message-user">${messageData.user}</span>
+            ${messageData.user === 'ADMIN' ? '<span class="admin-badge">ADMIN</span>' : ''}
+            <span class="message-time">${formatTime(messageData.time)}</span>
+          </div>
+          <div class="message-text">${messageData.message}</div>
+        </div>
+      `;
+      
+      if (isAdmin) {
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'message-actions';
+        actionsDiv.innerHTML = `
+          <button onclick="deleteMessage('${id}')" title="Delete"><i class="fas fa-trash"></i></button>
+          <button onclick="editMessage('${id}')" title="Edit"><i class="fas fa-edit"></i></button>
+          <button onclick="pinMessage('${id}', ${!messageData.pinned})" title="Pin/Unpin"><i class="fas fa-thumbtack"></i></button>
+        `;
+        messageDiv.appendChild(actionsDiv);
+      }
+      
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Send message
+    function sendMessage() {
+      const message = messageInput.value.trim();
+      if (!message) return;
+      
+      db.ref("messages").push({
+        user: isAdmin ? "ADMIN" : username,
+        message: message,
+        time: Date.now(),
+        pinned: false
+      });
+      
+      messageInput.value = '';
+    }
+
+    // Delete message
+    function deleteMessage(id) {
+      db.ref("messages/" + id).remove();
+      showNotification('Message deleted!');
+    }
+
+    // Edit message
+    function editMessage(id) {
+      const messageElement = document.querySelector(`[data-message-id="${id}"]`);
+      const currentText = messageElement.querySelector('.message-text').textContent;
+      const newText = prompt('Edit your message:', currentText);
+      
+      if (newText !== null && newText.trim() !== '' && newText !== currentText) {
+        db.ref("messages/" + id).update({ message: newText.trim() });
+        showNotification('Message updated!');
+      }
+    }
+
+    // Pin message
+    function pinMessage(id, state) {
+      db.ref("messages/" + id).update({ pinned: state });
+      showNotification(state ? 'Message pinned!' : 'Message unpinned!');
+    }
+
+    // Clear chat
+    function clearChat() {
+      if (confirm('Clear all messages? This cannot be undone.')) {
+        db.ref("messages").remove();
+        showNotification('Chat cleared!');
+      }
+    }
+
+    // Event listeners
+    messageInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
+      }
+    });
+
+    // Firebase listeners
+    // Messages listener
+    db.ref("messages").on("child_added", (snapshot) => {
+      const messageData = snapshot.val();
+      renderMessage(snapshot.key, messageData, true);
+      updateMessageCount();
+    });
+
+    db.ref("messages").on("child_changed", (snapshot) => {
+      const messageData = snapshot.val();
+      renderMessage(snapshot.key, messageData);
+    });
+
+    db.ref("messages").on("child_removed", (snapshot) => {
+      const messageElement = document.querySelector(`[data-message-id="${snapshot.key}"]`);
+      if (messageElement) {
+        messageElement.remove();
+        updateMessageCount();
+        showNotification('Message deleted!');
+      }
+    });
+
+    // Presence system
+    const presenceRef = db.ref("presence/" + username);
+    presenceRef.set(true);
+    presenceRef.onDisconnect().remove();
+
+    db.ref("presence").on("value", (snapshot) => {
+      activeCount.textContent = snapshot.numChildren();
+    });
+
+    // Message count
+    function updateMessageCount() {
+      db.ref("messages").once("value", (snapshot) => {
+        messageCount.textContent = snapshot.numChildren();
+      });
+    }
+
+    // Initialize
+    updateMessageCount();
+  </script>
+</body>
+</html>
