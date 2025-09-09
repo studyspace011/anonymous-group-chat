@@ -50,18 +50,18 @@
     }
     
     html, body {
-        height: 100%; /* Height ko 100% kiya */
+        height: 100%;
         width: 100%;
         font-family: 'Poppins', sans-serif;
         background: var(--bg);
         transition: background 0.3s ease;
-        overflow: hidden; /* Scroll ko body se hata diya */
+        overflow: hidden;
     }
 
     .chat-container {
       display: flex;
       flex-direction: column;
-      height: 100%; /* Ab container 100% height lega */
+      height: 100%;
       max-width: 100%;
       margin: 0 auto;
       background: var(--header-bg);
@@ -176,6 +176,7 @@
       gap: 10px;
       max-width: 85%;
       animation: messageAppear 0.3s ease;
+      position: relative;
     }
     
     @keyframes messageAppear {
@@ -253,15 +254,52 @@
     }
     
     .message.pinned {
-      border-left: 3px solid var(--warning);
-      background: rgba(255, 152, 0, 0.1);
-      padding: 12px;
-      border-radius: 10px;
+      border-left: 4px solid var(--warning);
+      background: linear-gradient(90deg, rgba(255,152,0,0.1) 0%, rgba(255,255,255,0) 100%);
+      padding: 12px 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(255,152,0,0.1);
+      position: relative;
+    }
+
+    .message.pinned::before {
+      content: "📌";
+      position: absolute;
+      top: -10px;
+      left: 16px;
+      background: var(--warning);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
     }
     
     .message.highlighted {
       border: 2px solid var(--warning);
-      box-shadow: 0 0 10px rgba(255, 152, 0, 0.3);
+      background: rgba(255, 152, 0, 0.05);
+      box-shadow: 0 0 15px rgba(255, 152, 0, 0.4);
+      animation: pulse 2s infinite;
+      position: relative;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(255, 152, 0, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0); }
+    }
+
+    .message.highlighted::after {
+      content: "✨";
+      position: absolute;
+      top: -10px;
+      right: 16px;
+      background: var(--warning);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
     }
     
     .message-actions {
@@ -628,7 +666,7 @@
         padding-bottom: max(10px, env(safe-area-inset-bottom));
       }
     }
-</style>
+  </style>
 </head>
 <body>
   <div class="chat-container">
@@ -680,6 +718,7 @@
         <button class="admin-btn" onclick="highlightMessage()"><i class="fas fa-star"></i> Highlight Msg</button>
         <button class="admin-btn danger" onclick="kickUser()"><i class="fas fa-user-slash"></i> Kick User</button>
         <button class="admin-btn danger" onclick="blockUser()"><i class="fas fa-ban"></i> Block User</button>
+        <button class="admin-btn" onclick="unblockUser()"><i class="fas fa-user-check"></i> Unblock User</button>
         <button class="admin-btn" onclick="renameUser()"><i class="fas fa-user-edit"></i> Rename User</button>
       </div>
     </div>
@@ -733,7 +772,7 @@
         localStorage.setItem('theme', 'light');
       }
     });
-    
+
     const firebaseConfig = {
       apiKey: "AIzaSyC9JnxPpN4IBlJIwkXF4TcUPJlIU-0LPw0",
       authDomain: "anon-chat-ebfc3.firebaseapp.com",
@@ -747,33 +786,49 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // Generate unique username
+    // Function to sanitize username (replace # with @)
+    function sanitizeUsername(name) {
+      return name.replace(/#/g, '@').replace(/[.$\[\]]/g, '_');
+    }
+
+    // Generate or migrate username
     let username = localStorage.getItem('chatUsername');
+
+    // Migrate old # usernames
+    if (username && username.includes('#')) {
+      username = sanitizeUsername(username);
+      localStorage.setItem('chatUsername', username);
+      console.log("Migrated username:", username);
+    }
+
+    // Generate new if none exists
     if (!username) {
       const adjectives = ["student"];
       const nouns = [""];
-      username = adjectives[Math.floor(Math.random() * adjectives.length)] + ' ' + nouns[Math.floor(Math.random() * nouns.length)] + '#' + Math.floor(Math.random() * 1000);
+      username = adjectives[Math.floor(Math.random() * adjectives.length)] + ' ' + nouns[Math.floor(Math.random() * nouns.length)] + '@' + Math.floor(Math.random() * 1000);
       localStorage.setItem('chatUsername', username);
     }
+
+    // Final sanitize
+    username = sanitizeUsername(username);
 
     // Display username
     document.getElementById('userDisplay').textContent = username;
 
-    // Admin check - only on first visit
+    // Admin check
     const ADMIN_SECRET = "aavid123";
     let isAdmin = false;
     const adminPanel = document.getElementById('adminPanel');
     
-    // Check if this is the user's first visit
     const hasVisited = localStorage.getItem('hasVisited');
     if (!hasVisited) {
-      const adminKey = prompt("Enter admin key (optional, press Cancel to skip):");
+      const adminKey = prompt("key (optional, press Cancel to skip):");
       if (adminKey === ADMIN_SECRET) {
         isAdmin = true;
+        localStorage.setItem('isAdmin', 'true');
         showNotification('Admin mode activated!', 'success');
         adminPanel.classList.add('active');
       }
-      // Mark that the user has visited
       localStorage.setItem('hasVisited', 'true');
     } else if (localStorage.getItem('isAdmin') === 'true') {
       isAdmin = true;
@@ -785,6 +840,12 @@
     const messageInput = document.getElementById('messageInput');
     const activeCount = document.getElementById('activeCount');
     const messageCount = document.getElementById('messageCount');
+
+    // Typing indicator element
+    const typingIndicator = document.createElement('div');
+    typingIndicator.id = 'typingIndicator';
+    typingIndicator.style.cssText = "color: #6c757d; font-size: 0.8rem; margin-top: 5px; padding: 5px; display: none;";
+    chatMessages.parentNode.insertBefore(typingIndicator, chatMessages.nextSibling);
 
     // Format time
     function formatTime(timestamp) {
@@ -809,7 +870,6 @@
       const existingMessage = document.querySelector(`[data-message-id="${id}"]`);
       
       if (existingMessage && !isNew) {
-        // Update existing message
         const textElement = existingMessage.querySelector('.message-text');
         textElement.textContent = messageData.message;
         
@@ -827,13 +887,11 @@
         return;
       }
 
-      // Remove welcome message on first real message
       const welcomeMessage = document.querySelector('.welcome-message');
       if (welcomeMessage) {
         welcomeMessage.remove();
       }
 
-      // Create new message
       const messageDiv = document.createElement('div');
       messageDiv.className = `message ${isOwn ? 'own' : ''} ${messageData.pinned ? 'pinned' : ''} ${messageData.highlighted ? 'highlighted' : ''}`;
       messageDiv.setAttribute('data-message-id', id);
@@ -868,28 +926,55 @@
 
     // Send message
     function sendMessage() {
+      // Stop typing indicator
+      db.ref("typing/" + username).set(false);
+
       const message = messageInput.value.trim();
       if (!message) return;
-      
-      db.ref("messages").push({
-        user: isAdmin ? "ADMIN" : username,
-        message: message,
-        time: Date.now(),
-        pinned: false,
-        highlighted: false
+
+      // Check if chat is paused
+      db.ref("chatStatus/paused").once("value", (snapshot) => {
+        if (snapshot.exists() && snapshot.val() === true && !isAdmin) {
+          showNotification("Chat is paused by admin!", "error");
+          return;
+        }
+
+        // Check if banned
+        db.ref("bannedUsers/" + username).once("value", (snapshot) => {
+          if (snapshot.exists()) {
+            showNotification("You are banned from sending messages!", "error");
+            return;
+          }
+
+          db.ref("messages").push({
+            user: isAdmin ? "ADMIN" : username,
+            message: message,
+            time: Date.now(),
+            pinned: false,
+            highlighted: false
+          });
+
+          messageInput.value = '';
+        });
       });
-      
-      messageInput.value = '';
     }
 
     // Delete message
     function deleteMessage(id) {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       db.ref("messages/" + id).remove();
       showNotification('Message deleted!');
     }
 
     // Edit message
     function editMessage(id) {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       const messageElement = document.querySelector(`[data-message-id="${id}"]`);
       const currentText = messageElement.querySelector('.message-text').textContent;
       const newText = prompt('Edit your message:', currentText);
@@ -902,18 +987,24 @@
 
     // Pin message
     function pinMessage(id, state) {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       db.ref("messages/" + id).update({ pinned: state });
       showNotification(state ? 'Message pinned!' : 'Message unpinned!');
     }
 
     // Highlight message
     function highlightMessage(id, state) {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       if (id) {
-        // Toggle highlight for specific message
         db.ref("messages/" + id).update({ highlighted: state });
         showNotification(state ? 'Message highlighted!' : 'Message unhighlighted!');
       } else {
-        // Highlight last message
         const messagesRef = db.ref("messages");
         messagesRef.orderByKey().limitToLast(1).once("value", (snapshot) => {
           snapshot.forEach((childSnapshot) => {
@@ -926,6 +1017,10 @@
 
     // Clear chat
     function clearChat() {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       if (confirm('Clear all messages? This cannot be undone.')) {
         db.ref("messages").remove();
         showNotification('Chat cleared!');
@@ -934,33 +1029,150 @@
 
     // Pause chat
     function pauseChat() {
-      showNotification('Chat paused! (Demo feature)');
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
+      db.ref("chatStatus/paused").once("value", (snapshot) => {
+        const isPaused = snapshot.exists() ? snapshot.val() : false;
+        db.ref("chatStatus/paused").set(!isPaused);
+        showNotification(!isPaused ? 'Chat paused!' : 'Chat resumed!');
+      });
     }
 
     // Kick user
     function kickUser() {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       const userToKick = prompt('Enter username to kick:');
       if (userToKick) {
-        showNotification(`User ${userToKick} kicked! (Demo feature)`);
+        db.ref("kickedUsers/" + userToKick).set(Date.now())
+          .then(() => {
+            db.ref("presence/" + userToKick).remove();
+            showNotification(`User ${userToKick} kicked!`);
+          })
+          .catch(err => {
+            showNotification('Failed to kick user', 'error');
+          });
       }
     }
 
     // Block user
     function blockUser() {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       const userToBlock = prompt('Enter username to block:');
       if (userToBlock) {
-        showNotification(`User ${userToBlock} blocked! (Demo feature)`);
+        db.ref("bannedUsers/" + userToBlock).set(true)
+          .then(() => {
+            db.ref("presence/" + userToBlock).remove();
+            showNotification(`User ${userToBlock} blocked!`);
+          })
+          .catch(err => {
+            showNotification('Failed to block user', 'error');
+          });
+      }
+    }
+
+    // Unblock user
+    function unblockUser() {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
+      const userToUnblock = prompt('Enter username to unblock:');
+      if (userToUnblock) {
+        db.ref("bannedUsers/" + userToUnblock).remove()
+          .then(() => {
+            showNotification(`User ${userToUnblock} unblocked!`);
+          })
+          .catch(err => {
+            showNotification('Failed to unblock user', 'error');
+          });
       }
     }
 
     // Rename user
     function renameUser() {
+      if (!isAdmin) {
+        showNotification("Only admin can do this!", "error");
+        return;
+      }
       const oldName = prompt('Enter current username:');
       const newName = prompt('Enter new username:');
       if (oldName && newName) {
-        showNotification(`User ${oldName} renamed to ${newName}! (Demo feature)`);
+        db.ref("usernames/" + oldName).set(newName)
+          .then(() => {
+            showNotification(`User ${oldName} renamed to ${newName}!`);
+            if (username === oldName) {
+              username = newName;
+              localStorage.setItem('chatUsername', newName);
+              document.getElementById('userDisplay').textContent = newName;
+            }
+          })
+          .catch(err => {
+            showNotification('Failed to rename user', 'error');
+          });
       }
     }
+
+    // Listen for username changes
+    db.ref("usernames").on("value", (snapshot) => {
+      snapshot.forEach((childSnapshot) => {
+        const oldName = childSnapshot.key;
+        const newName = childSnapshot.val();
+        
+        // Update display name in all messages
+        const messageElements = document.querySelectorAll(`[data-message-id]`);
+        messageElements.forEach(el => {
+          const userText = el.querySelector('.message-user');
+          if (userText && userText.textContent === oldName) {
+            userText.textContent = newName;
+          }
+        });
+      });
+    });
+
+    // Typing indicator
+    let typingTimeout;
+    messageInput.addEventListener('input', () => {
+      clearTimeout(typingTimeout);
+      if (messageInput.value.trim().length > 0) {
+        db.ref("typing/" + username).set(true);
+        typingTimeout = setTimeout(() => {
+          db.ref("typing/" + username).set(false);
+        }, 1500);
+      } else {
+        db.ref("typing/" + username).set(false);
+      }
+    });
+
+    messageInput.addEventListener('blur', () => {
+      db.ref("typing/" + username).set(false);
+    });
+
+    // Listen for typing
+    db.ref("typing").on("value", (snapshot) => {
+      const typingUsers = [];
+      snapshot.forEach((childSnapshot) => {
+        const user = childSnapshot.key;
+        const isTyping = childSnapshot.val();
+        if (isTyping && user !== username) {
+          typingUsers.push(user);
+        }
+      });
+
+      if (typingUsers.length > 0) {
+        typingIndicator.textContent = `${typingUsers.join(', ')} is typing...`;
+        typingIndicator.style.display = 'block';
+      } else {
+        typingIndicator.style.display = 'none';
+      }
+    });
 
     // Event listeners
     messageInput.addEventListener('keypress', (e) => {
@@ -970,15 +1182,12 @@
     });
 
     // Firebase listeners
-    // Messages listener with auto-delete
     db.ref("messages").on("child_added", snap => {
       const m = snap.val();
-      // Auto-delete messages older than 24 hours
       if(Date.now() - m.time > 24*60*60*1000) {
-        snap.ref.remove(); // 24 घंटे से पुराने message delete
+        snap.ref.remove();
         return;
       }
-      
       renderMessage(snap.key, m, true);
       updateMessageCount();
     });
